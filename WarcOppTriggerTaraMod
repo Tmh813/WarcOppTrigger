@@ -69,6 +69,11 @@ trigger ContractRenewalOpportunityCreate on Contract (after insert) {
             renewalOppName += renewalOppCloseDate.month();
             }
 
+       //tmh: get record type ID for Renewal record type 
+       // Id devRecordTypeId = Schema.SObjectType.Opportunity.getRecordTypeInfosByName().get('Renewal').getRecordTypeId(); 
+
+
+
             //create renewal opportunity
             Opportunity renewalOpp = new Opportunity(Name=renewalOppName,
                                                  Type='Existing Business',  
@@ -97,7 +102,7 @@ trigger ContractRenewalOpportunityCreate on Contract (after insert) {
 						 // tmh: add the renewal category to the opp. 
 						// renewal_category__c = 'At Risk'  
 						// tmh: add the record type 
-						 // Id devRecordTypeId = Schema.SObjectType.Opportunity.getRecordTypeInfosByName().get('Renewal').getRecordTypeId(); 
+						 // recordTypeId = devRecordTypeId
                                                  );
             insert renewalOpp;
 
