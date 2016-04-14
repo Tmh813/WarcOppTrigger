@@ -1,0 +1,114 @@
+/**
+ *  @who    K Sinclair
+ *  @when   20/10/2015
+ *  @what   Creates renewal opportunity based on current opportunity for contract
+ */
+trigger ContractRenewalOpportunityCreate on Contract (after insert) {
+
+    Contract contract = Trigger.new[0];
+    
+    //if contract was created with'Create Contract' button on opportunity then create renewal opportunity
+    if (contract.Create_Renewal_Opportunity__c == true) {
+        
+        Opportunity currentOpp = [SELECT Name, 
+                                          AccountId,
+                                          Account.Name,
+                                          Account.Warc_SubRef__c,
+                                          Description,
+                                          Large_Agency__c,
+                                          Budget_Assumption__c,
+                                          Budgeted_Value_Local__c,
+                                          Budgeted_Value_Assumption__c,
+                                          Original_Budgeted_amount__c,
+                                          Renewal_Forecast_Value__c,
+                                          Original_Budgeted_local_amount__c,
+                                          Last_Year_Local_value__c,
+                                          Last_Year_GBP_value__c,
+                                          Subscription_Type__c,
+                                          Local_Client_Service_Manager__r.Name,
+                                          Local_Client_Service_Manager__c,
+                                          Sales_Manager__r.Name,
+                                          Sales_Manager__c,
+                                          Currency__c,
+                                          CurrencyISOCode,
+                                          CloseDate,
+                                          LeadSource,
+                                          Master_Password__c,
+                                          Master_Username__c,
+                                          VAT_Code__c,
+                                          Type,
+                                          (SELECT OpportunityId, 
+                                                  PricebookEntryId, 
+                                                  Quantity,  
+                                                  ServiceDate, 
+                                                  Description, 
+                                                  UnitPrice 
+                                                  FROM OpportunityLineItems)
+                                          FROM Opportunity WHERE Id=:contract.Opportunity__c];         
+                
+        OpportunityLineItem currentOppLineItem = currentOpp.OpportunityLineItems;
+        
+        //calc renewal opportunity close date
+        Date renewalOppCloseDate;        
+      
+        //If Ren opp is to be created from New business opp
+        if(currentOpp.Type == 'New Business'){
+            renewalOppCloseDate = currentOpp.CloseDate.addYears(1).addMonths(1);   
+            renewalOppCloseDate = Date.newInstance(renewalOppCloseDate.Year(), renewalOppCloseDate.Month(), 1);
+        }
+        else if(currentOpp.Type == 'Existing Business'){
+            renewalOppCloseDate = currentOpp.CloseDate.addYears(1);  
+        }
+        
+        //Build renewal opportunity name
+        if(renewalOppCloseDate != null){
+            String renewalOppName = contract.id + '-Ren' + renewalOppCloseDate.year();
+            if (renewalOppCloseDate.month() < 10) {
+                renewalOppName += '0' + renewalOppCloseDate.month();
+            } else {
+            renewalOppName += renewalOppCloseDate.month();
+            }
+
+            //create renewal opportunity
+            Opportunity renewalOpp = new Opportunity(Name=renewalOppName,
+                                                 Type='Existing Business',  
+                                                 Subscription_Type__c=currentOpp.Subscription_Type__c,
+                                                 Description=currentOpp.Description,
+                                                 Large_Agency__c=currentOpp.Large_Agency__c,
+                                                 Budget_Assumption__c=currentOpp.Budget_Assumption__c,
+                                                 Budgeted_Value_Local__c=currentOpp.Budgeted_Value_Local__c,
+                                                 Budgeted_Value_Assumption__c=currentOpp.Budgeted_Value_Assumption__c,
+                                                 Original_Budgeted_amount__c=currentOpp.Original_Budgeted_amount__c,
+                                                 //Renewal_Forecast_Value__c=currentOpp.Renewal_Forecast_Value__c,
+                                                 Original_Budgeted_local_amount__c=currentOpp.Original_Budgeted_local_amount__c,
+                                                 Last_Year_Local_value__c=currentOpp.Last_Year_Local_value__c,
+                                                 Last_Year_GBP_value__c=currentOpp.Last_Year_GBP_value__c,
+                                                 Local_Client_Service_Manager__c=currentOpp.Local_Client_Service_Manager__c,
+                                                 Sales_Manager__c=currentOpp.Sales_Manager__c,
+                                                 Currency__c=currentOpp.Currency__c,
+                                                 CurrencyISOCode=currentOpp.CurrencyISOCode,
+                                                 AccountId=currentOpp.AccountId,
+                                                 CloseDate=renewalOppCloseDate,
+                                                 StageName='Renewal M/Y',  // tmh: change this to a regular opportunity stage 
+                                                 LeadSource='Renewal',
+                                                 Master_Password__c=currentOpp.Master_Password__c,
+                                                 Master_Username__c=currentOpp.Master_Username__c,
+                                                 VAT_Code__c=currentOpp.VAT_Code__c
+												 // tmh: add the renewal category to the opp. 
+												 // renewal_category__c = 'At Risk'  
+												 // tmh: add the record type 
+												 // recordType = // still figuring the code syntax out. 
+                                                 );
+            insert renewalOpp;
+
+            //create add product to renewal opportunity
+            OpportunityLineItem renewalOppLineItem = new OpportunityLineItem(OpportunityId=renewalOpp.Id,
+                                                                          PricebookEntryId=currentOppLineItem.PricebookEntryId,
+                                                                          Quantity=currentOppLineItem.Quantity,
+                                                                          ServiceDate=currentOppLineItem.ServiceDate,
+                                                                          Description=currentOppLineItem.Description,
+                                                                          UnitPrice=currentOppLineItem.UnitPrice);
+            insert renewalOppLineItem;
+        }    
+    }    
+}
