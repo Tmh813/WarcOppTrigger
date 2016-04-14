@@ -97,7 +97,7 @@ trigger ContractRenewalOpportunityCreate on Contract (after insert) {
 												 // tmh: add the renewal category to the opp. 
 												 // renewal_category__c = 'At Risk'  
 												 // tmh: add the record type 
-												 // recordType = // still figuring the code syntax out. 
+												 // Id devRecordTypeId = Schema.SObjectType.Opportunity.getRecordTypeInfosByName().get('Renewal').getRecordTypeId(); 
                                                  );
             insert renewalOpp;
 
